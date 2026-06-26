@@ -1,4 +1,3 @@
-# ui/renderer.py
 import tkinter as tk
 from config import *
 
@@ -30,7 +29,7 @@ class MapRenderer:
             label = name.split()[-1]
             self.canvas.create_text(px, py, text=label, fill="white", font=("Segoe UI", 12, "bold"))
 
-    # === HÀM VẼ TRỰC QUAN RIÊNG CHO CSP MÀ BẠN BỊ THIẾU ===
+    # === HÀM VẼ TRỰC QUAN CHO CSP ===
     def draw_csp_state(self, victims_dict, assignment, focus, status, victim_statuses):
         """Tô màu và vẽ hiệu ứng cho các nạn nhân dựa trên log của CSP"""
         for name, pos in victims_dict.items():
@@ -85,11 +84,11 @@ class MapRenderer:
         self.canvas.create_line(pixel_points, fill="#B3A300", width=6, joinstyle=tk.ROUND, capstyle=tk.ROUND)
         self.canvas.create_line(pixel_points, fill=COLORS["PATH"], width=3, joinstyle=tk.ROUND, capstyle=tk.ROUND)
 
-    # === HÀM VẼ TRỰC QUAN RIÊNG CHO MINIMAX ===
+    # === HÀM VẼ TRỰC QUAN CHO MINIMAX ===
     def draw_minimax_state(self, robot_pos, fire_pos, real_robot_pos, real_fire_pos):
         """Vẽ bóng ma dự đoán tương lai của Robot (Vàng nhạt) và Lửa (Cam)"""
 
-        # 1. Vẽ vị trí THẬT (Đậm màu)
+        # 1. Vẽ vị trí THẬT
         rx, ry = real_robot_pos
         self.color_cell(rx, ry, "#2ECC71")  # Tô cứng màu xanh lục của Robot
 
@@ -97,11 +96,10 @@ class MapRenderer:
         self.canvas.create_rectangle(fx * CELL_SIZE, fy * CELL_SIZE, (fx + 1) * CELL_SIZE, (fy + 1) * CELL_SIZE,
                                      fill="#C0392B", outline="#13293D")
 
-        # FIX: Thay thế Emoji bằng Text thông thường để chống crash Tkinter trên Windows
         self.canvas.create_text(fx * CELL_SIZE + CELL_SIZE // 2, fy * CELL_SIZE + CELL_SIZE // 2, text="LỬA",
                                 fill="white", font=("Segoe UI", 10, "bold"))
 
-        # 2. Vẽ vị trí TƯỞNG TƯỢNG trong đệ quy (Bóng ma)
+        # 2. Vẽ vị trí TƯỞNG TƯỢNG trong đệ quy
         if robot_pos and robot_pos != real_robot_pos:
             hx, hy = robot_pos
             self.canvas.create_rectangle(hx * CELL_SIZE + 5, hy * CELL_SIZE + 5, (hx + 1) * CELL_SIZE - 5,

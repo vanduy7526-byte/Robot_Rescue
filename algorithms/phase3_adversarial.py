@@ -1,4 +1,3 @@
-# algorithms/phase3_adversarial.py
 from config import WALL
 from collections import deque
 
@@ -60,7 +59,7 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
                 score -= 200
         return score
 
-    # MINIMAX THUẦN
+    # MINIMAX
     def minimax(r_pos, f_pos, depth, is_maximizing, current_imagined_path):
         if r_pos == f_pos: return -9999, None
         if r_pos == goal_pos: return 9999, None
@@ -89,7 +88,6 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
 
     # ================= VÒNG LẶP TRÒ CHƠI THỰC TẾ =================
     while True:
-        # Ghi Log theo phong cách Tường thuật
         history.append({
             'message': f"\n======= LƯỢT {turn} ========\n"
                        f"Vị trí hiện tại: Robot{robot_pos} và Lửa{fire_pos}\n"

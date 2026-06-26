@@ -1,4 +1,3 @@
-# algorithms/phase2_informed.py
 import heapq
 from models.node import get_moves, trace_path
 
@@ -35,6 +34,3 @@ def astar_search(map_grid, start_pos, goal_pos):
     return [], history
 
 
-def greedy_best_first_search(map_grid, start_pos, goal_pos):
-    # Thành viên A sẽ bổ sung Greedy ở đây
-    return [], []

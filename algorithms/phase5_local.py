@@ -1,4 +1,3 @@
-# algorithms/phase5_local.py
 import math
 import random
 from algorithms.phase2_informed import manhattan_distance
@@ -58,6 +57,3 @@ def simulated_annealing(map_grid, start_pos, goal_pos):
 
     return [], history
 
-def steepest_ascent_hill_climbing(map_grid, start_pos, goal_pos):
-    # Thành viên B sẽ làm thuật toán này ở đây
-    return [], []

@@ -1,6 +1,4 @@
-# ui/panel.py
 import tkinter as tk
-
 
 class LogPanel:
     def __init__(self, parent_frame):

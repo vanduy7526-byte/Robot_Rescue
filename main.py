@@ -1,4 +1,3 @@
-# main.py
 import tkinter as tk
 from tkinter import ttk
 from config import *
@@ -238,7 +237,7 @@ class RescueApp:
                     if 'commit_robot' in node:
                         self.robot.position = node['commit_robot']
 
-                        self.robot.energy -= 2  # Trừ 2% Năng lượng cho mỗi bước chạy trốn
+                        self.robot.energy -= 2  # Trừ 2% Năng lượng cho mỗi bước
 
                         self.var_robot_stats.set(self.robot.get_status_string())
 

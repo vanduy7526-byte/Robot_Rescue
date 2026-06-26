@@ -1,6 +1,4 @@
-# algorithms/phase4_csp.py
 import random
-
 
 def backtracking_search(map_grid, start_pos, goal_pos):
     variables = ['Nạn nhân A', 'Nạn nhân B', 'Nạn nhân C', 'Nạn nhân D']

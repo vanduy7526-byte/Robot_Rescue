@@ -1,4 +1,3 @@
-# algorithms/phase6_complex.py
 from models.node import get_moves
 
 
@@ -14,8 +13,6 @@ def and_or_graph_search(map_grid, start_pos, goal_pos):
     goal = tuple(goal_pos)
     start = {'state': tuple(start_pos), 'path_cost': 0, 'parent': None}
     history = []
-
-    # BỘ NHỚ ĐỆM (MEMOIZATION): Lưu trữ kết quả của những ô đã duyệt
     memo = {}
 
     def get_non_deterministic_results(state_node, action):

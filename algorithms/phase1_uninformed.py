@@ -1,4 +1,3 @@
-# algorithms/phase1_uninformed.py
 from collections import deque
 from models.node import get_moves, trace_path
 
@@ -23,6 +22,3 @@ def bfs_search(map_grid, start_pos, goal_pos):
 
     return [], history
 
-def dfs_search(map_grid, start_pos, goal_pos):
-    # Thành viên A sẽ bổ sung DFS ở đây
-    return [], []

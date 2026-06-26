@@ -1,5 +1,3 @@
-# models/robot.py
-
 class Robot:
     def __init__(self, start_pos, initial_energy=100, medical_kits=3):
         """
