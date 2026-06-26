@@ -84,3 +84,32 @@ class MapRenderer:
             pixel_points.extend([x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2])
         self.canvas.create_line(pixel_points, fill="#B3A300", width=6, joinstyle=tk.ROUND, capstyle=tk.ROUND)
         self.canvas.create_line(pixel_points, fill=COLORS["PATH"], width=3, joinstyle=tk.ROUND, capstyle=tk.ROUND)
+
+    # === HÀM VẼ TRỰC QUAN RIÊNG CHO MINIMAX ===
+    def draw_minimax_state(self, robot_pos, fire_pos, real_robot_pos, real_fire_pos):
+        """Vẽ bóng ma dự đoán tương lai của Robot (Vàng nhạt) và Lửa (Cam)"""
+
+        # 1. Vẽ vị trí THẬT (Đậm màu)
+        rx, ry = real_robot_pos
+        self.color_cell(rx, ry, "#2ECC71")  # Tô cứng màu xanh lục của Robot
+
+        fx, fy = real_fire_pos
+        self.canvas.create_rectangle(fx * CELL_SIZE, fy * CELL_SIZE, (fx + 1) * CELL_SIZE, (fy + 1) * CELL_SIZE,
+                                     fill="#C0392B", outline="#13293D")
+
+        # FIX: Thay thế Emoji bằng Text thông thường để chống crash Tkinter trên Windows
+        self.canvas.create_text(fx * CELL_SIZE + CELL_SIZE // 2, fy * CELL_SIZE + CELL_SIZE // 2, text="LỬA",
+                                fill="white", font=("Segoe UI", 10, "bold"))
+
+        # 2. Vẽ vị trí TƯỞNG TƯỢNG trong đệ quy (Bóng ma)
+        if robot_pos and robot_pos != real_robot_pos:
+            hx, hy = robot_pos
+            self.canvas.create_rectangle(hx * CELL_SIZE + 5, hy * CELL_SIZE + 5, (hx + 1) * CELL_SIZE - 5,
+                                         (hy + 1) * CELL_SIZE - 5, fill="#F1C40F", outline="#F39C12", dash=(4, 2))
+
+        if fire_pos and fire_pos != real_fire_pos:
+            hx, hy = fire_pos
+            self.canvas.create_rectangle(hx * CELL_SIZE + 5, hy * CELL_SIZE + 5, (hx + 1) * CELL_SIZE - 5,
+                                         (hy + 1) * CELL_SIZE - 5, fill="#E67E22", outline="#D35400", dash=(4, 2))
+            self.canvas.create_text(hx * CELL_SIZE + CELL_SIZE // 2, hy * CELL_SIZE + CELL_SIZE // 2, text="x",
+                                    fill="white", font=("Segoe UI", 10, "bold"))

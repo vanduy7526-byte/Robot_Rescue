@@ -12,7 +12,7 @@ from algorithms.phase2_informed import astar_search
 from algorithms.phase4_csp import backtracking_search
 from algorithms.phase5_local import simulated_annealing
 from algorithms.phase6_complex import and_or_graph_search
-
+from algorithms.phase3_adversarial import minimax_search
 
 class RescueApp:
     def __init__(self, root):
@@ -25,20 +25,22 @@ class RescueApp:
         self.is_paused = False
         self.after_id = None
 
-        self.header = tk.Label(self.root, text="MÔ PHỎNG ROBOT CỨU HỘ", font=("Segoe UI", 18, "bold"), bg="#2C3E50",
-                               fg="white", pady=12)
+        self.header = tk.Label(self.root, text="MÔ PHỎNG ROBOT CỨU HỘ", font=("Segoe UI", 16, "bold"), bg="#2C3E50",
+                               fg="white", pady=6)
         self.header.pack(side=tk.TOP, fill=tk.X)
+
         self.main_frame = tk.Frame(self.root, bg="#ECF0F1")
-        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+
         self.left_frame = tk.Frame(self.main_frame, bg="#ECF0F1")
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 20))
 
         self.control_frame = tk.LabelFrame(self.left_frame, text=" Bảng Điều Khiển ", font=("Segoe UI", 11, "bold"),
-                                           bg="#ECF0F1", fg="#2C3E50", padx=10, pady=10)
-        self.control_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 15))
+                                           bg="#ECF0F1", fg="#2C3E50", padx=10, pady=5)
+        self.control_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
 
         self.algo_var = tk.StringVar()
-        algo_list = ["BFS", "A-Star", "Simulated Annealing", "AND-OR Search", "Backtracking"]
+        algo_list = ["BFS", "A-Star", "Simulated Annealing", "AND-OR Search", "Backtracking", "Minimax"]
         self.algo_combobox = ttk.Combobox(self.control_frame, textvariable=self.algo_var, values=algo_list,
                                           state="readonly", font=("Segoe UI", 11), width=18)
         self.algo_combobox.current(0)
@@ -60,8 +62,8 @@ class RescueApp:
                                    fg="white", cursor="hand2", command=self.reset_map)
         self.btn_reset.pack(side=tk.RIGHT, fill=tk.X, expand=True, ipady=3)
 
-        self.metrics_frame = tk.Frame(self.left_frame, bg="#1E272E", padx=15, pady=10)
-        self.metrics_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 15))
+        self.metrics_frame = tk.Frame(self.left_frame, bg="#1E272E", padx=15, pady=5)
+        self.metrics_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
         self.var_status = tk.StringVar(value="Trạng thái: SẴN SÀNG")
         self.var_algo_display = tk.StringVar(value="Thuật toán: ---")
         self.var_explored = tk.StringVar(value="Số ô đã duyệt: 0")
@@ -96,6 +98,8 @@ class RescueApp:
             elif y1 == y2:
                 for x in range(min(x1, x2), max(x1, x2) + 1): self.my_map.add_element(x, y1, WALL)
 
+        # KHỞI TẠO VỊ TRÍ LỬA CHO MINIMAX
+        self.fire_pos = (5, 4)  # Đặt lửa chặn giữa đường hẻm
         self.my_map.add_element(self.robot.position[0], self.robot.position[1], ROBOT)
 
         # PHÂN LUỒNG MÔI TRƯỜNG: 4 nạn nhân cho CSP, 1 nạn nhân cho Tìm đường
@@ -143,6 +147,8 @@ class RescueApp:
         self.btn_pause.config(state=tk.DISABLED, text="TẠM DỪNG", bg="#F39C12")
         self.btn_step.config(state=tk.NORMAL)
 
+        self.algo_combobox.config(state="readonly")
+
         self.robot = Robot(start_pos=(1, 4), initial_energy=100, medical_kits=2)
         self.var_robot_stats.set(self.robot.get_status_string())
 
@@ -182,6 +188,8 @@ class RescueApp:
             self.path, self.history = and_or_graph_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Backtracking":
             self.path, self.history = backtracking_search(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "Minimax":
+            self.path, self.history = minimax_search(self.my_map, self.robot.position, self.goal_pos, self.fire_pos)
 
         self.is_running = True
         self.is_paused = start_paused
@@ -217,6 +225,30 @@ class RescueApp:
 
                     self.robot.medical_kits = 2 - used_kits
                     self.var_robot_stats.set(self.robot.get_status_string())
+
+
+            elif current_algo == "Minimax":
+
+                if 'message' in node:
+
+                    self.log_panel.add_log(node['message'])
+
+                    # XỬ LÝ CỜ ĐỂ DI CHUYỂN THẬT TRÊN BẢN ĐỒ
+
+                    if 'commit_robot' in node:
+                        self.robot.position = node['commit_robot']
+
+                        self.robot.energy -= 2  # Trừ 2% Năng lượng cho mỗi bước chạy trốn
+
+                        self.var_robot_stats.set(self.robot.get_status_string())
+
+                    if 'commit_fire' in node:
+                        self.fire_pos = node['commit_fire']
+
+                    self.renderer.draw_grid(self.my_map)
+
+                    self.renderer.draw_minimax_state(node['robot_pos'], node['fire_pos'], self.robot.position,
+                                                     self.fire_pos)
 
             elif current_algo == "AND-OR Search" and 'message' in node:
                 x, y = node['state']
@@ -255,8 +287,8 @@ class RescueApp:
                     self.log_panel.add_log(f" > Duyệt: {coord_str:<8} | Chi phí (g): {g_cost}")
 
             self.step_index += 1
-            if not self.is_paused: self.after_id = self.root.after(300,
-                                                                   self.animate_step)  # Đã tăng delay lên 300ms để nhìn UI đổi màu dễ hơn
+            delay_time = 100
+            if not self.is_paused: self.after_id = self.root.after(delay_time, self.animate_step)
         else:
             self.draw_final_path()
             self.is_running = False
