@@ -1,5 +1,6 @@
 from models.node import get_moves
-
+from collections import deque
+from config import WALL
 
 def make_move(current_node, new_pos):
     return {
@@ -136,3 +137,72 @@ def and_or_graph_search(map_grid, start_pos, goal_pos):
         return [], history
 
     return final_plan, history
+
+def sensorless_search(map_grid, start_pos, goal_pos):
+    """
+    Tìm kiếm không cảm biến (belief state) sử dụng BFS.
+    Mỗi belief là một tập hợp các vị trí có thể của robot.
+    Hành động là một trong 4 hướng.
+    """
+    goal = tuple(goal_pos)
+    start_belief = frozenset([tuple(start_pos)])
+    goal_belief = frozenset([goal])
+
+    # Hàng đợi BFS: (belief, path_actions, parent_belief, action)
+    queue = deque()
+    queue.append((start_belief, [], None, None))
+    visited = {start_belief}
+    history = []
+
+    # Hàm chuyển trạng thái belief theo một hướng
+    def transition(belief, direction):
+        new_belief = set()
+        dx, dy = direction
+        for (x, y) in belief:
+            nx, ny = x + dx, y + dy
+            # Kiểm tra hợp lệ
+            if 0 <= nx < len(map_grid.grid[0]) and 0 <= ny < len(map_grid.grid):
+                if map_grid.grid[ny][nx] != WALL:  # WALL import từ config
+                    new_belief.add((nx, ny))
+                else:
+                    # Nếu không thể di chuyển, đứng yên
+                    new_belief.add((x, y))
+            else:
+                new_belief.add((x, y))
+        return frozenset(new_belief)
+
+    directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]  # Lên, Xuống, Trái, Phải
+
+    while queue:
+        belief, actions, parent_belief, action = queue.popleft()
+        history.append({
+            'belief': set(belief),
+            'actions': actions,
+            'action': action,
+            'parent_belief': parent_belief
+        })
+
+        # Kiểm tra nếu belief chỉ chứa goal (chắc chắn đến đích)
+        if belief == goal_belief or belief == frozenset([goal]):
+            # Xây dựng đường đi (các vị trí dự kiến)
+            path = [start_pos]
+            # Tái tạo path từ actions
+            current_pos = start_pos
+            for act in actions:
+                dx, dy = act
+                nx, ny = current_pos[0] + dx, current_pos[1] + dy
+                if 0 <= nx < len(map_grid.grid[0]) and 0 <= ny < len(map_grid.grid) and map_grid.grid[ny][nx] != WALL:
+                    current_pos = (nx, ny)
+                # Nếu không hợp lệ thì đứng yên (nhưng trong kế hoạch vẫn ghi vị trí cũ)
+                path.append(current_pos)
+            return path, history
+
+        # Mở rộng các hành động
+        for dir_vec in directions:
+            new_belief = transition(belief, dir_vec)
+            if new_belief not in visited:
+                visited.add(new_belief)
+                new_actions = actions + [dir_vec]
+                queue.append((new_belief, new_actions, belief, dir_vec))
+
+    return [], history

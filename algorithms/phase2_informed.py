@@ -33,4 +33,27 @@ def astar_search(map_grid, start_pos, goal_pos):
 
     return [], history
 
+def greedy_best_first_search(map_grid, start_pos, goal_pos):
+    goal = tuple(goal_pos)
+    start_node = {'state': tuple(start_pos), 'parent': None, 'h': manhattan_distance(start_pos, goal)}
+    count = 0
+    open_set = [(start_node['h'], count, start_node)]
+    visited = {tuple(start_pos)}
+    history = []
 
+    while open_set:
+        _, _, current = heapq.heappop(open_set)
+        history.append(current)
+
+        if current['state'] == goal:
+            return trace_path(current), history
+
+        for move in get_moves(current['state'], map_grid):
+            if move not in visited:
+                visited.add(move)
+                h = manhattan_distance(move, goal)
+                next_node = {'state': move, 'parent': current, 'h': h}
+                count += 1
+                heapq.heappush(open_set, (h, count, next_node))
+
+    return [], history

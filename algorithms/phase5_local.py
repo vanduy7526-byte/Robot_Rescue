@@ -57,3 +57,39 @@ def simulated_annealing(map_grid, start_pos, goal_pos):
 
     return [], history
 
+def hill_climbing_search(map_grid, start_pos, goal_pos):
+    goal = tuple(goal_pos)
+    current = {'state': tuple(start_pos), 'parent': None, 'path_cost': 0}
+    history = [current]
+
+    while True:
+        if current['state'] == goal:
+            return trace_path(current), history
+
+        # Lấy tất cả các ô lân cận
+        neighbors = get_moves(current['state'], map_grid)
+        if not neighbors:
+            break
+
+        # Đánh giá chi phí (khoảng cách đến đích) cho từng neighbor
+        neighbor_costs = [(n, manhattan_distance(n, goal)) for n in neighbors]
+        # Sắp xếp theo chi phí tăng dần (ưu tiên gần đích nhất)
+        neighbor_costs.sort(key=lambda x: x[1])
+        best_neighbor, best_cost = neighbor_costs[0]
+
+        current_cost = manhattan_distance(current['state'], goal)
+
+        # Nếu neighbor tốt hơn (chi phí thấp hơn), di chuyển
+        if best_cost < current_cost:
+            next_node = {
+                'state': tuple(best_neighbor),
+                'parent': current,
+                'path_cost': current['path_cost'] + 1
+            }
+            current = next_node
+            history.append(current)
+        else:
+            # Đã đạt cực trị (local optimum)
+            break
+
+    return [], history
