@@ -1,0 +1,17 @@
+GRID_WIDTH = 10
+GRID_HEIGHT = 10
+CELL_SIZE = 35
+
+EMPTY = 0
+WALL = 1
+ROBOT = 2
+VICTIM = 3
+
+COLORS = {
+    EMPTY: "#0B132B",
+    WALL: "#13293D",
+    ROBOT: "#2ECC71",
+    VICTIM: "#E74C3C",
+    "PATH": "#F1C40F",
+    "VISITED": "#34495E"
+}
