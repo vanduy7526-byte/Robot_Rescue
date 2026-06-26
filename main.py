@@ -6,12 +6,12 @@ from models.robot import Robot
 from ui.renderer import MapRenderer
 from ui.panel import LogPanel
 
-from algorithms.phase1_uninformed import bfs_search, dfs_search
-from algorithms.phase2_informed import astar_search, greedy_best_first_search
-from algorithms.phase4_csp import backtracking_search, forward_checking_search
-from algorithms.phase5_local import simulated_annealing, hill_climbing_search
-from algorithms.phase6_complex import and_or_graph_search, sensorless_search
-from algorithms.phase3_adversarial import minimax_search, alpha_beta_search
+from algorithms.phase1_uninformed import bfs_search
+from algorithms.phase2_informed import astar_search
+from algorithms.phase4_csp import backtracking_search
+from algorithms.phase5_local import simulated_annealing
+from algorithms.phase6_complex import and_or_graph_search
+from algorithms.phase3_adversarial import minimax_search
 
 class RescueApp:
     def __init__(self, root):
@@ -39,12 +39,7 @@ class RescueApp:
         self.control_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
 
         self.algo_var = tk.StringVar()
-        algo_list = ["BFS", "DFS", 
-                     "A-Star", "Greedy Best-First",
-                     "Simulated Annealing", "Hill Climbing",
-                     "AND-OR Search", "Sensorless",
-                     "Backtracking", "Forward Checking",
-                     "Minimax", "Alpha-Beta"]
+        algo_list = ["BFS", "A-Star", "Simulated Annealing", "AND-OR Search", "Backtracking", "Minimax"]
         self.algo_combobox = ttk.Combobox(self.control_frame, textvariable=self.algo_var, values=algo_list,
                                           state="readonly", font=("Segoe UI", 11), width=18)
         self.algo_combobox.current(0)
@@ -183,29 +178,18 @@ class RescueApp:
         self.log_panel.add_log(f">> ĐANG CHẠY: {selected_algo.upper()}...")
 
         if selected_algo == "BFS":
-            self.path, self.history = bfs_search(...)
-        elif selected_algo == "DFS":
-            self.path, self.history = dfs_search(...)
+            self.path, self.history = bfs_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "A-Star":
-            self.path, self.history = astar_search(...)
-        elif selected_algo == "Greedy Best-First":
-            self.path, self.history = greedy_best_first_search(...)
+            self.path, self.history = astar_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Simulated Annealing":
-            self.path, self.history = simulated_annealing(...)
-        elif selected_algo == "Hill Climbing":
-            self.path, self.history = hill_climbing_search(...)
+            self.path, self.history = simulated_annealing(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "AND-OR Search":
-            self.path, self.history = and_or_graph_search(...)
-        elif selected_algo == "Sensorless":
-            self.path, self.history = sensorless_search(...)
+            self.path, self.history = and_or_graph_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Backtracking":
-            self.path, self.history = backtracking_search(...)
-        elif selected_algo == "Forward Checking":
-            self.path, self.history = forward_checking_search(...)
+            self.path, self.history = backtracking_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Minimax":
-            self.path, self.history = minimax_search(..., self.fire_pos)
-        elif selected_algo == "Alpha-Beta":
-            self.path, self.history = alpha_beta_search(..., self.fire_pos)
+            self.path, self.history = minimax_search(self.my_map, self.robot.position, self.goal_pos, self.fire_pos)
+
         self.is_running = True
         self.is_paused = start_paused
         self.step_index = 0
