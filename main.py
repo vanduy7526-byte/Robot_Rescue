@@ -121,7 +121,7 @@ class RescueApp:
             self.is_paused = True
             self.btn_pause.config(text="TIẾP TỤC", bg="#3498DB")
             self.var_status.set("Trạng thái: Đang tạm dừng")
-            self.log_panel.add_log(">> [ĐĐ TẠM DỪNG MÔ PHỎNG]")
+            self.log_panel.add_log(">> [TẠM DỪNG MÔ PHỎNG]")
             if self.after_id is not None:
                 self.root.after_cancel(self.after_id)
                 self.after_id = None
