@@ -284,7 +284,13 @@ class RescueApp:
         if self.step_index < len(self.history):
             node = self.history[self.step_index]
             current_algo = self.algo_var.get()
-            self.var_explored.set(f"Số bước đã duyệt: {self.step_index + 1} / {len(self.history)}")
+            # Tự động đổi đơn vị đo lường trên UI cho chuẩn xác
+            if current_algo in ("Minimax", "Alpha-Beta"):
+                # Đối với Nhóm 3: Hiển thị Số nhánh đã duyệt thực tế (lấy từ thuật toán)
+                nodes = node.get('nodes_explored', 0)
+                self.var_explored.set(f"Số nhánh đã duyệt: {nodes} nhánh")
+            else:
+                self.var_explored.set(f"Số bước đã duyệt: {self.step_index + 1} / {len(self.history)}")
 
             # Xử lý Sensorless
             if current_algo == "Sensorless":
@@ -390,7 +396,7 @@ class RescueApp:
                 if current_algo in ("Backtracking", "Forward Checking"):
                     delay_time = 700
                 elif current_algo in ("Minimax", "Alpha-Beta"):
-                    delay_time = 300
+                    delay_time = 15
                 elif current_algo == "Sensorless":
                     delay_time = 600
 

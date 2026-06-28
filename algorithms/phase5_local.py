@@ -14,6 +14,7 @@ def simulated_annealing(map_grid, start_pos, goal_pos):
     current = start
     history = [current]
 
+
     while T > T_min:
         if current['state'] == goal:
             return trace_path(current), history
@@ -78,6 +79,7 @@ def hill_climbing_search(map_grid, start_pos, goal_pos):
         best_neighbor, best_cost = neighbor_costs[0]
 
         current_cost = manhattan_distance(current['state'], goal)
+
 
         # Nếu neighbor tốt hơn (chi phí thấp hơn), di chuyển
         if best_cost <= current_cost:

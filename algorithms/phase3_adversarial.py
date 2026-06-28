@@ -1,6 +1,7 @@
 from config import WALL
 from collections import deque
 
+
 def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
     history = []
     MAX_DEPTH = 4
@@ -9,6 +10,9 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
     fire_pos = fire_start_pos
     path = [robot_pos]
     turn = 1
+
+    # THÊM BỘ ĐẾM NHÁNH
+    node_counter = {'count': 0}
 
     def get_valid_moves(pos):
         moves = []
@@ -44,7 +48,8 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
     )
     history.append({
         'message': intro_message,
-        'robot_pos': robot_pos, 'fire_pos': fire_pos
+        'robot_pos': robot_pos, 'fire_pos': fire_pos,
+        'nodes_explored': node_counter['count']
     })
 
     # HÀM HEURISTIC
@@ -61,6 +66,9 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
 
     # MINIMAX
     def minimax(r_pos, f_pos, depth, is_maximizing, current_imagined_path):
+        # TĂNG BỘ ĐẾM KHI XÉT NHÁNH MỚI
+        node_counter['count'] += 1
+
         if r_pos == f_pos: return -9999, None
         if r_pos == goal_pos: return 9999, None
         if depth == 0:
@@ -92,7 +100,8 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
             'message': f"\n======= LƯỢT {turn} ========\n"
                        f"Vị trí hiện tại: Robot{robot_pos} và Lửa{fire_pos}\n"
                        f"Robot đang tính toán nước đi...",
-            'robot_pos': robot_pos, 'fire_pos': fire_pos
+            'robot_pos': robot_pos, 'fire_pos': fire_pos,
+            'nodes_explored': node_counter['count']
         })
 
         best_score, best_move = minimax(robot_pos, fire_pos, MAX_DEPTH, True, [])
@@ -100,7 +109,7 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
         if not best_move:
             history.append(
                 {'message': "Robot đã bị ép góc và không còn đường nào để đi.", 'robot_pos': robot_pos,
-                 'fire_pos': fire_pos})
+                 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
         robot_pos = best_move
@@ -110,17 +119,19 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
         history.append({
             'message': f"Robot di chuyển tới {robot_pos}: {best_score} điểm",
             'robot_pos': robot_pos, 'fire_pos': fire_pos,
-            'commit_robot': robot_pos
+            'commit_robot': robot_pos,
+            'nodes_explored': node_counter['count']
         })
 
         if robot_pos == goal_pos:
             history.append(
-                {'message': "\nRobot đã cứu được nạn nhân!", 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                {'message': "\nRobot đã cứu được nạn nhân!", 'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                 'nodes_explored': node_counter['count']})
             break
         if robot_pos == fire_pos:
             history.append(
                 {'message': "\nRobot bị lửa thiêu...", 'robot_pos': robot_pos,
-                 'fire_pos': fire_pos})
+                 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
         # BƯỚC ĐI CỦA LỬA
@@ -132,25 +143,30 @@ def minimax_search(map_grid, start_pos, goal_pos, fire_start_pos):
                 history.append({
                     'message': f"Lửa lan rộng sang {fire_pos}",
                     'robot_pos': robot_pos, 'fire_pos': fire_pos,
-                    'commit_fire': fire_pos
+                    'commit_fire': fire_pos,
+                    'nodes_explored': node_counter['count']
                 })
         else:
             history.append({
                 'message': f"Lửa đang đứng yên, chưa lan rộng",
-                'robot_pos': robot_pos, 'fire_pos': fire_pos
+                'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                'nodes_explored': node_counter['count']
             })
 
         if robot_pos == fire_pos:
             history.append(
-                {'message': "\nRobot bị lửa thiêu...", 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                {'message': "\nRobot bị lửa thiêu...", 'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                 'nodes_explored': node_counter['count']})
             break
 
         turn += 1
         if turn > 60:
             history.append(
-                {'message': "\nHai bên giằng co quá lâu.", 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                {'message': "\nHai bên giằng co quá lâu.", 'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                 'nodes_explored': node_counter['count']})
             break
     return path, history
+
 
 def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
     history = []
@@ -160,6 +176,9 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
     fire_pos = fire_start_pos
     path = [robot_pos]
     turn = 1
+
+    # THÊM BỘ ĐẾM NHÁNH
+    node_counter = {'count': 0}
 
     def get_valid_moves(pos):
         moves = []
@@ -195,7 +214,8 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
     )
     history.append({
         'message': intro_message,
-        'robot_pos': robot_pos, 'fire_pos': fire_pos
+        'robot_pos': robot_pos, 'fire_pos': fire_pos,
+        'nodes_explored': node_counter['count']
     })
 
     def heuristic_value(r_pos, f_pos, current_imagined_path, real_path):
@@ -215,6 +235,9 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
 
     # ================= THUẬT TOÁN ALPHA-BETA =================
     def alpha_beta(r_pos, f_pos, depth, is_maximizing, alpha, beta, current_imagined_path):
+        # TĂNG BỘ ĐẾM KHI XÉT NHÁNH MỚI
+        node_counter['count'] += 1
+
         if r_pos == f_pos:
             return -9999, None
         if r_pos == goal_pos:
@@ -241,7 +264,8 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                     history.append({
                         'message': f"   [TỈA MAX] Đang xét Robot tại {r_pos}.\n"
                                    f"   -> Alpha ({a_str}) >= Beta ({b_str}). Robot dừng xét các nước đi còn lại vì đã có lựa chọn an toàn hơn!",
-                        'robot_pos': robot_pos, 'fire_pos': fire_pos
+                        'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                        'nodes_explored': node_counter['count']
                     })
                     break
             return best_value, best_move
@@ -265,7 +289,8 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                     history.append({
                         'message': f"   [TỈA MIN] Đang xét Lửa tại {f_pos}.\n"
                                    f"   -> Alpha ({a_str}) >= Beta ({b_str}). Lửa dừng xét nhánh này vì Robot kiểu gì cũng sẽ né đường này!",
-                        'robot_pos': robot_pos, 'fire_pos': fire_pos
+                        'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                        'nodes_explored': node_counter['count']
                     })
                     break
             return best_value, best_move
@@ -276,7 +301,8 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
             'message': f"\n======= LƯỢT {turn} ========\n"
                        f"Vị trí hiện tại: Robot{robot_pos} và Lửa{fire_pos}\n"
                        f"Robot đang tính toán với Alpha-Beta...",
-            'robot_pos': robot_pos, 'fire_pos': fire_pos
+            'robot_pos': robot_pos, 'fire_pos': fire_pos,
+            'nodes_explored': node_counter['count']
         })
 
         best_score, best_move = alpha_beta(robot_pos, fire_pos, MAX_DEPTH, True, -float('inf'), float('inf'), [])
@@ -284,7 +310,7 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
         if not best_move:
             history.append(
                 {'message': "Robot đã bị ép góc và không còn đường nào để đi.",
-                 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                 'robot_pos': robot_pos, 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
         robot_pos = best_move
@@ -293,18 +319,19 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
         history.append({
             'message': f"Quyết định: Robot di chuyển tới {robot_pos} ({best_score} điểm)",
             'robot_pos': robot_pos, 'fire_pos': fire_pos,
-            'commit_robot': robot_pos
+            'commit_robot': robot_pos,
+            'nodes_explored': node_counter['count']
         })
 
         if robot_pos == goal_pos:
             history.append(
                 {'message': "\nRobot đã cứu được nạn nhân!",
-                 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                 'robot_pos': robot_pos, 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
         if robot_pos == fire_pos:
             history.append(
                 {'message': "\nRobot bị lửa thiêu...",
-                 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                 'robot_pos': robot_pos, 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
         # Lửa di chuyển (mỗi 2 lượt)
@@ -316,25 +343,27 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                 history.append({
                     'message': f"Lửa lan rộng sang {fire_pos}",
                     'robot_pos': robot_pos, 'fire_pos': fire_pos,
-                    'commit_fire': fire_pos
+                    'commit_fire': fire_pos,
+                    'nodes_explored': node_counter['count']
                 })
         else:
             history.append({
                 'message': f"Lửa đang đứng yên, chưa lan rộng",
-                'robot_pos': robot_pos, 'fire_pos': fire_pos
+                'robot_pos': robot_pos, 'fire_pos': fire_pos,
+                'nodes_explored': node_counter['count']
             })
 
         if robot_pos == fire_pos:
             history.append(
                 {'message': "\nRobot bị lửa thiêu...",
-                 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                 'robot_pos': robot_pos, 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
         turn += 1
         if turn > 60:
             history.append(
                 {'message': "\nHai bên giằng co quá lâu.",
-                 'robot_pos': robot_pos, 'fire_pos': fire_pos})
+                 'robot_pos': robot_pos, 'fire_pos': fire_pos, 'nodes_explored': node_counter['count']})
             break
 
     return path, history
