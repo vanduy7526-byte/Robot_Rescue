@@ -184,6 +184,7 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                 queue.append((move, d + 1))
 
     intro_message = (
+        "=== HƯỚNG DẪN & LUẬT TÍNH ĐIỂM ===\n"
         "1. Tốc độ: Robot đi 1 bước/lượt. Lửa lan 1 bước/2 lượt.\n"
         "2. Cách tính điểm:\n"
         "   + Cứu được người: Nhận ngay +9999 điểm.\n"
@@ -206,7 +207,13 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                 score -= 200
         return score
 
-    # Alpha-Beta
+    # Hàm định dạng Alpha Beta cho đẹp
+    def format_val(val):
+        if val == float('inf'): return "+∞"
+        if val == -float('inf'): return "-∞"
+        return str(val)
+
+    # ================= THUẬT TOÁN ALPHA-BETA =================
     def alpha_beta(r_pos, f_pos, depth, is_maximizing, alpha, beta, current_imagined_path):
         if r_pos == f_pos:
             return -9999, None
@@ -224,10 +231,21 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                                     current_imagined_path + [move])
                 if val > best_value:
                     best_value, best_move = val, move
+
+                # Cập nhật Alpha
                 alpha = max(alpha, best_value)
+
+                # BẮT ĐẦU KIỂM TRA CẮT TỈA
                 if alpha >= beta:
+                    a_str, b_str = format_val(alpha), format_val(beta)
+                    history.append({
+                        'message': f"   [TỈA MAX] Đang xét Robot tại {r_pos}.\n"
+                                   f"   -> Alpha ({a_str}) >= Beta ({b_str}). Robot dừng xét các nước đi còn lại vì đã có lựa chọn an toàn hơn!",
+                        'robot_pos': robot_pos, 'fire_pos': fire_pos
+                    })
                     break
             return best_value, best_move
+
         else:
             best_value = float('inf')
             valid_moves = get_valid_moves(f_pos)
@@ -237,11 +255,22 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
                                     current_imagined_path)
                 if val < best_value:
                     best_value, best_move = val, move
+
+                # Cập nhật Beta
                 beta = min(beta, best_value)
+
+                # BẮT ĐẦU KIỂM TRA CẮT TỈA
                 if alpha >= beta:
+                    a_str, b_str = format_val(alpha), format_val(beta)
+                    history.append({
+                        'message': f"   [TỈA MIN] Đang xét Lửa tại {f_pos}.\n"
+                                   f"   -> Alpha ({a_str}) >= Beta ({b_str}). Lửa dừng xét nhánh này vì Robot kiểu gì cũng sẽ né đường này!",
+                        'robot_pos': robot_pos, 'fire_pos': fire_pos
+                    })
                     break
             return best_value, best_move
 
+    # ================= VÒNG LẶP TRÒ CHƠI THỰC TẾ =================
     while True:
         history.append({
             'message': f"\n======= LƯỢT {turn} ========\n"
@@ -262,7 +291,7 @@ def alpha_beta_search(map_grid, start_pos, goal_pos, fire_start_pos):
         path.append(robot_pos)
 
         history.append({
-            'message': f"Robot di chuyển tới {robot_pos}: {best_score} điểm",
+            'message': f"Quyết định: Robot di chuyển tới {robot_pos} ({best_score} điểm)",
             'robot_pos': robot_pos, 'fire_pos': fire_pos,
             'commit_robot': robot_pos
         })

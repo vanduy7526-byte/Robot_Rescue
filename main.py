@@ -6,17 +6,17 @@ from models.robot import Robot
 from ui.renderer import MapRenderer
 from ui.panel import LogPanel
 
-from algorithms.phase1_uninformed import bfs_search
-from algorithms.phase2_informed import astar_search
-from algorithms.phase4_csp import backtracking_search
-from algorithms.phase5_local import simulated_annealing
-from algorithms.phase6_complex import and_or_graph_search
-from algorithms.phase3_adversarial import minimax_search
+from algorithms.phase1_uninformed import bfs_search, dfs_search
+from algorithms.phase2_informed import astar_search, greedy_best_first_search
+from algorithms.phase4_csp import backtracking_search, forward_checking_search
+from algorithms.phase5_local import simulated_annealing, hill_climbing_search
+from algorithms.phase6_complex import and_or_graph_search, sensorless_search
+from algorithms.phase3_adversarial import minimax_search, alpha_beta_search
 
 class RescueApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Robot Cứu Hộ")
+        self.root.title("Robot Cứu Hộ - 6 Phase AI")
         self.root.state('zoomed')
         self.root.configure(bg="#ECF0F1")
 
@@ -24,7 +24,9 @@ class RescueApp:
         self.is_paused = False
         self.after_id = None
 
-        self.header = tk.Label(self.root, text="MÔ PHỎNG ROBOT CỨU HỘ", font=("Segoe UI", 16, "bold"), bg="#2C3E50",
+        # Header
+        self.header = tk.Label(self.root, text="MÔ PHỎNG ROBOT CỨU HỘ - 6 PHASE AI",
+                               font=("Segoe UI", 16, "bold"), bg="#2C3E50",
                                fg="white", pady=6)
         self.header.pack(side=tk.TOP, fill=tk.X)
 
@@ -34,33 +36,84 @@ class RescueApp:
         self.left_frame = tk.Frame(self.main_frame, bg="#ECF0F1")
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 20))
 
-        self.control_frame = tk.LabelFrame(self.left_frame, text=" Bảng Điều Khiển ", font=("Segoe UI", 11, "bold"),
+        # Control Frame
+        self.control_frame = tk.LabelFrame(self.left_frame, text=" Bảng Điều Khiển ",
+                                           font=("Segoe UI", 11, "bold"),
                                            bg="#ECF0F1", fg="#2C3E50", padx=10, pady=5)
         self.control_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
 
+        # === Phase Combobox ===
+        self.phase_var = tk.StringVar()
+        phase_list = [
+            "1. Tìm kiếm mù (Blind Search)",
+            "2. Tìm kiếm có thông tin (Informed Search)",
+            "3. Tìm kiếm có đối thủ (Adversarial Search)",
+            "4. Tìm kiếm thỏa mãn ràng buộc (CSP)",
+            "5. Tìm kiếm cục bộ (Local Search)",
+            "6. Tìm kiếm môi trường phức tạp (Complex)"
+        ]
+        self.phase_combobox = ttk.Combobox(self.control_frame, textvariable=self.phase_var,
+                                           values=phase_list, state="readonly",
+                                           font=("Segoe UI", 10), width=30)
+        self.phase_combobox.current(0)
+        self.phase_combobox.pack(side=tk.LEFT, padx=(0, 10), ipady=2)
+
+        # === Algorithm Combobox (cập nhật theo phase) ===
         self.algo_var = tk.StringVar()
-        algo_list = ["BFS", "A-Star", "Simulated Annealing", "AND-OR Search", "Backtracking", "Minimax"]
-        self.algo_combobox = ttk.Combobox(self.control_frame, textvariable=self.algo_var, values=algo_list,
-                                          state="readonly", font=("Segoe UI", 11), width=18)
-        self.algo_combobox.current(0)
-        self.algo_combobox.pack(side=tk.LEFT, padx=(0, 10), ipady=3)
+        self.algo_combobox = ttk.Combobox(self.control_frame, textvariable=self.algo_var,
+                                          state="readonly", font=("Segoe UI", 10), width=20)
+        self.algo_combobox.pack(side=tk.LEFT, padx=(0, 10), ipady=2)
 
-        # Bắt sự kiện đổi Combobox sẽ reset bản đồ lập tức
-        self.algo_combobox.bind("<<ComboboxSelected>>", lambda e: self.reset_map())
+        # Ánh xạ phase -> danh sách thuật toán
+        self.phase_algo_map = {
+            "1. Tìm kiếm mù (Blind Search)": ["BFS", "DFS"],
+            "2. Tìm kiếm có thông tin (Informed Search)": ["A-Star", "Greedy Best-First"],
+            "3. Tìm kiếm có đối thủ (Adversarial Search)": ["Minimax", "Alpha-Beta"],
+            "4. Tìm kiếm thỏa mãn ràng buộc (CSP)": ["Backtracking", "Forward Checking"],
+            "5. Tìm kiếm cục bộ (Local Search)": ["Hill Climbing", "Simulated Annealing"],
+            "6. Tìm kiếm môi trường phức tạp (Complex)": ["AND-OR Search", "Sensorless"]
+        }
 
-        self.btn_run = tk.Button(self.control_frame, text="CHẠY", font=("Segoe UI", 10, "bold"), bg="#27AE60",
-                                 fg="white", cursor="hand2", command=self.start_auto_play)
+        # Sự kiện khi đổi phase: cập nhật algos và reset
+        def on_phase_change(event=None):
+            phase = self.phase_var.get()
+            algos = self.phase_algo_map.get(phase, [])
+            self.algo_combobox['values'] = algos
+            if algos:
+                self.algo_combobox.current(0)
+            else:
+                self.algo_combobox.set('')
+            self.reset_map()
+
+        # Sự kiện khi đổi thuật toán: reset
+        def on_algo_change(event=None):
+            self.reset_map()
+
+        self.phase_combobox.bind("<<ComboboxSelected>>", on_phase_change)
+        self.algo_combobox.bind("<<ComboboxSelected>>", on_algo_change)
+
+        # === Các nút điều khiển ===
+        self.btn_run = tk.Button(self.control_frame, text="CHẠY", font=("Segoe UI", 10, "bold"),
+                                 bg="#27AE60", fg="white", cursor="hand2",
+                                 command=self.start_auto_play)
         self.btn_run.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=3)
-        self.btn_pause = tk.Button(self.control_frame, text="TẠM DỪNG", font=("Segoe UI", 10, "bold"), bg="#F39C12",
-                                   fg="white", cursor="hand2", command=self.toggle_pause, state=tk.DISABLED)
+
+        self.btn_pause = tk.Button(self.control_frame, text="TẠM DỪNG", font=("Segoe UI", 10, "bold"),
+                                   bg="#F39C12", fg="white", cursor="hand2",
+                                   command=self.toggle_pause, state=tk.DISABLED)
         self.btn_pause.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=3)
-        self.btn_step = tk.Button(self.control_frame, text="STEP", font=("Segoe UI", 10, "bold"), bg="#9B59B6",
-                                  fg="white", cursor="hand2", command=self.manual_step, state=tk.NORMAL)
+
+        self.btn_step = tk.Button(self.control_frame, text="STEP", font=("Segoe UI", 10, "bold"),
+                                  bg="#9B59B6", fg="white", cursor="hand2",
+                                  command=self.manual_step, state=tk.NORMAL)
         self.btn_step.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=3)
-        self.btn_reset = tk.Button(self.control_frame, text="RESET", font=("Segoe UI", 10, "bold"), bg="#E74C3C",
-                                   fg="white", cursor="hand2", command=self.reset_map)
+
+        self.btn_reset = tk.Button(self.control_frame, text="RESET", font=("Segoe UI", 10, "bold"),
+                                   bg="#E74C3C", fg="white", cursor="hand2",
+                                   command=self.reset_map)
         self.btn_reset.pack(side=tk.RIGHT, fill=tk.X, expand=True, ipady=3)
 
+        # === Metrics ===
         self.metrics_frame = tk.Frame(self.left_frame, bg="#1E272E", padx=15, pady=5)
         self.metrics_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
         self.var_status = tk.StringVar(value="Trạng thái: SẴN SÀNG")
@@ -70,40 +123,44 @@ class RescueApp:
         self.var_robot_stats = tk.StringVar()
 
         font_metric = ("Consolas", 11, "bold")
-        tk.Label(self.metrics_frame, textvariable=self.var_status, font=font_metric, bg="#1E272E", fg="#00FFCC",
-                 anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 40), pady=5)
-        tk.Label(self.metrics_frame, textvariable=self.var_algo_display, font=font_metric, bg="#1E272E", fg="#FFEA00",
-                 anchor="w").grid(row=0, column=1, sticky="w", pady=5)
-        tk.Label(self.metrics_frame, textvariable=self.var_explored, font=font_metric, bg="#1E272E", fg="#FF0055",
-                 anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 40), pady=5)
-        tk.Label(self.metrics_frame, textvariable=self.var_path, font=font_metric, bg="#1E272E", fg="#00FFCC",
-                 anchor="w").grid(row=1, column=1, sticky="w", pady=5)
-        tk.Label(self.metrics_frame, textvariable=self.var_robot_stats, font=("Consolas", 12, "bold"), bg="#1E272E",
-                 fg="#FF9F43", anchor="w").grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        tk.Label(self.metrics_frame, textvariable=self.var_status, font=font_metric,
+                 bg="#1E272E", fg="#00FFCC", anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 40), pady=5)
+        tk.Label(self.metrics_frame, textvariable=self.var_algo_display, font=font_metric,
+                 bg="#1E272E", fg="#FFEA00", anchor="w").grid(row=0, column=1, sticky="w", pady=5)
+        tk.Label(self.metrics_frame, textvariable=self.var_explored, font=font_metric,
+                 bg="#1E272E", fg="#FF0055", anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 40), pady=5)
+        tk.Label(self.metrics_frame, textvariable=self.var_path, font=font_metric,
+                 bg="#1E272E", fg="#00FFCC", anchor="w").grid(row=1, column=1, sticky="w", pady=5)
+        tk.Label(self.metrics_frame, textvariable=self.var_robot_stats, font=("Consolas", 12, "bold"),
+                 bg="#1E272E", fg="#FF9F43", anchor="w").grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
+        # === Canvas ===
         self.canvas_frame = tk.Frame(self.left_frame, bg="#3A506B", padx=2, pady=2)
         self.canvas_frame.pack(side=tk.TOP)
         self.renderer = MapRenderer(self.canvas_frame)
         self.log_panel = LogPanel(self.main_frame)
+        self.phase_combobox.event_generate("<<ComboboxSelected>>")
 
-        self.reset_map()
+    # ==================== CÁC PHƯƠNG THỨC ====================
 
     def setup_mock_map(self):
         self.my_map = MapGrid()
         wall_lines = [(4, 1, 4, 2), (4, 6, 4, 8), (7, 3, 9, 3), (7, 3, 7, 5)]
         for x1, y1, x2, y2 in wall_lines:
             if x1 == x2:
-                for y in range(min(y1, y2), max(y1, y2) + 1): self.my_map.add_element(x1, y, WALL)
+                for y in range(min(y1, y2), max(y1, y2) + 1):
+                    self.my_map.add_element(x1, y, WALL)
             elif y1 == y2:
-                for x in range(min(x1, x2), max(x1, x2) + 1): self.my_map.add_element(x, y1, WALL)
+                for x in range(min(x1, x2), max(x1, x2) + 1):
+                    self.my_map.add_element(x, y1, WALL)
 
-        # KHỞI TẠO VỊ TRÍ LỬA CHO MINIMAX
-        self.fire_pos = (5, 4)  # Đặt lửa chặn giữa đường hẻm
+        self.fire_pos = (5, 4)  # Cho Minimax / Alpha-Beta
         self.my_map.add_element(self.robot.position[0], self.robot.position[1], ROBOT)
 
-        # PHÂN LUỒNG MÔI TRƯỜNG: 4 nạn nhân cho CSP, 1 nạn nhân cho Tìm đường
-        if self.algo_var.get() == "Backtracking":
-            self.victims = {'Nạn nhân A': (8, 1), 'Nạn nhân B': (8, 4), 'Nạn nhân C': (8, 7), 'Nạn nhân D': (6, 8)}
+        current_algo = self.algo_var.get()
+        if current_algo in ("Backtracking", "Forward Checking"):
+            self.victims = {'Nạn nhân A': (8, 1), 'Nạn nhân B': (8, 4),
+                            'Nạn nhân C': (8, 7), 'Nạn nhân D': (6, 8)}
             self.goal_pos = None
         else:
             self.victims = {'Nạn nhân B': (8, 4)}
@@ -113,7 +170,8 @@ class RescueApp:
             self.my_map.add_element(pos[0], pos[1], VICTIM)
 
     def toggle_pause(self):
-        if not self.is_running: return
+        if not self.is_running:
+            return
         if self.is_paused:
             self.is_paused = False
             self.btn_pause.config(text="TẠM DỪNG", bg="#F39C12")
@@ -145,7 +203,7 @@ class RescueApp:
         self.btn_run.config(state=tk.NORMAL)
         self.btn_pause.config(state=tk.DISABLED, text="TẠM DỪNG", bg="#F39C12")
         self.btn_step.config(state=tk.NORMAL)
-
+        self.phase_combobox.config(state="readonly")
         self.algo_combobox.config(state="readonly")
 
         self.robot = Robot(start_pos=(1, 4), initial_energy=100, medical_kits=2)
@@ -161,14 +219,17 @@ class RescueApp:
         self.log_panel.clear()
         self.log_panel.add_log(">> ĐÃ DỪNG THUẬT TOÁN. Đã làm sạch bản đồ.")
         self.renderer.draw_grid(self.my_map)
-        if len(self.victims) > 1: self.renderer.draw_victims_labels(self.victims)
+        if len(self.victims) > 1:
+            self.renderer.draw_victims_labels(self.victims)
 
     def start_auto_play(self, start_paused=False):
         selected_algo = self.algo_var.get()
+        # Vô hiệu hóa các combobox và nút trong khi chạy
         self.btn_run.config(state=tk.DISABLED)
         self.btn_pause.config(state=tk.NORMAL, text="TIẾP TỤC" if start_paused else "TẠM DỪNG",
                               bg="#3498DB" if start_paused else "#F39C12")
         self.btn_step.config(state=tk.NORMAL)
+        self.phase_combobox.config(state=tk.DISABLED)
         self.algo_combobox.config(state=tk.DISABLED)
 
         self.var_status.set("Trạng thái: Đang tạm dừng (Step)" if start_paused else "Trạng thái: Đang chạy")
@@ -177,18 +238,33 @@ class RescueApp:
         self.log_panel.add_log("-" * 40)
         self.log_panel.add_log(f">> ĐANG CHẠY: {selected_algo.upper()}...")
 
+        # Gọi đúng thuật toán
         if selected_algo == "BFS":
             self.path, self.history = bfs_search(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "DFS":
+            self.path, self.history = dfs_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "A-Star":
             self.path, self.history = astar_search(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "Greedy Best-First":
+            self.path, self.history = greedy_best_first_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Simulated Annealing":
             self.path, self.history = simulated_annealing(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "Hill Climbing":
+            self.path, self.history = hill_climbing_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "AND-OR Search":
             self.path, self.history = and_or_graph_search(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "Sensorless":
+            self.path, self.history = sensorless_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Backtracking":
             self.path, self.history = backtracking_search(self.my_map, self.robot.position, self.goal_pos)
+        elif selected_algo == "Forward Checking":
+            self.path, self.history = forward_checking_search(self.my_map, self.robot.position, self.goal_pos)
         elif selected_algo == "Minimax":
             self.path, self.history = minimax_search(self.my_map, self.robot.position, self.goal_pos, self.fire_pos)
+        elif selected_algo == "Alpha-Beta":
+            self.path, self.history = alpha_beta_search(self.my_map, self.robot.position, self.goal_pos, self.fire_pos)
+        else:
+            self.path, self.history = [], []
 
         self.is_running = True
         self.is_paused = start_paused
@@ -200,55 +276,72 @@ class RescueApp:
             self.animate_step()
 
     def animate_step(self, force_step=False):
-        if not self.is_running: return
-        if self.is_paused and not force_step: return
+        if not self.is_running:
+            return
+        if self.is_paused and not force_step:
+            return
 
         if self.step_index < len(self.history):
             node = self.history[self.step_index]
             current_algo = self.algo_var.get()
             self.var_explored.set(f"Số bước đã duyệt: {self.step_index + 1} / {len(self.history)}")
 
-            if current_algo == "Backtracking":
+            # Xử lý Sensorless
+            if current_algo == "Sensorless":
+                belief = node.get('belief', set())
+                actions = node.get('actions', [])
+                action = node.get('action')
+
+                # In trạng thái niềm tin ra log
+                self.log_panel.add_log(f"Belief state (kích thước {len(belief)}): {list(belief)}")
+                self.renderer.draw_grid(self.my_map)
+
+                # 1. Vẽ nạn nhân màu Đỏ trước (Làm nền)
+                for name, pos in self.victims.items():
+                    px, py = pos
+                    self.renderer.color_cell(px, py, COLORS[VICTIM])
+                self.renderer.draw_victims_labels(self.victims)
+
+                # 2. Vẽ TẤT CẢ trạng thái niềm tin màu Xanh Lá
+                for (x, y) in belief:
+                    self.renderer.color_cell(x, y, COLORS[ROBOT])
+                    px1, py1 = x * CELL_SIZE, y * CELL_SIZE
+                    self.renderer.canvas.create_text(px1 + CELL_SIZE // 2, py1 + CELL_SIZE // 2,
+                                                     text="R", fill="white", font=("Segoe UI", 10, "bold"))
+
+                if action:
+                    self.log_panel.add_log(f"  Hành động: {action}, tổng số bước: {len(actions)}")
+            # CSP
+            elif current_algo in ("Backtracking", "Forward Checking"):
                 if 'message' in node:
                     self.log_panel.add_log(node['message'])
-                    self.renderer.draw_grid(self.my_map)  # Reset sạch
-                    self.renderer.draw_csp_state(self.victims, node['assignment'], node['focus'], node['status'],
-                                                 node.get('victim_statuses', {}))
-
+                    self.renderer.draw_grid(self.my_map)
+                    self.renderer.draw_csp_state(self.victims, node['assignment'], node['focus'],
+                                                 node['status'], node.get('victim_statuses', {}))
                     used_kits = 0
                     for var_name, val in node['assignment'].items():
-                        if var_name == node['focus'] and node['status'] in ['checking', 'invalid']:
+                        if var_name == node['focus'] and node['status'] in ('checking', 'invalid'):
                             continue
                         if val == 1:
                             used_kits += 1
-
                     self.robot.medical_kits = 2 - used_kits
                     self.var_robot_stats.set(self.robot.get_status_string())
 
-
-            elif current_algo == "Minimax":
-
+            # Adversarial
+            elif current_algo in ("Minimax", "Alpha-Beta"):
                 if 'message' in node:
-
                     self.log_panel.add_log(node['message'])
-
-                    # XỬ LÝ CỜ ĐỂ DI CHUYỂN THẬT TRÊN BẢN ĐỒ
-
                     if 'commit_robot' in node:
                         self.robot.position = node['commit_robot']
-
-                        self.robot.energy -= 2  # Trừ 2% Năng lượng cho mỗi bước
-
+                        self.robot.energy -= 2
                         self.var_robot_stats.set(self.robot.get_status_string())
-
                     if 'commit_fire' in node:
                         self.fire_pos = node['commit_fire']
-
                     self.renderer.draw_grid(self.my_map)
+                    self.renderer.draw_minimax_state(node['robot_pos'], node['fire_pos'],
+                                                     self.robot.position, self.fire_pos)
 
-                    self.renderer.draw_minimax_state(node['robot_pos'], node['fire_pos'], self.robot.position,
-                                                     self.fire_pos)
-
+            # AND-OR
             elif current_algo == "AND-OR Search" and 'message' in node:
                 x, y = node['state']
                 if (x, y) != self.robot.position and (x, y) != self.goal_pos:
@@ -258,6 +351,7 @@ class RescueApp:
                         self.renderer.color_cell(x, y, "#E74C3C")
                 self.log_panel.add_log(node['message'])
 
+            # Các thuật toán còn lại (BFS, DFS, A*, Greedy, SA, HC)
             else:
                 x, y = node['state']
                 g_cost = 0
@@ -275,6 +369,10 @@ class RescueApp:
 
                 if current_algo == "A-Star":
                     self.log_panel.add_log(f" > Duyệt: {coord_str:<8} | g={g_cost:<3} h={h_cost:<3} f={f_cost}")
+                elif current_algo == "Greedy Best-First":
+                    self.log_panel.add_log(f" > Duyệt: {coord_str:<8} | h={h_cost}")
+                elif current_algo == "Hill Climbing":
+                    self.log_panel.add_log(f" > Duyệt: {coord_str:<8} | h={h_cost}")
                 elif current_algo == "Simulated Annealing":
                     T_val, p_val, rand_val = node.get('T', 0), node.get('p', 0), node.get('rand', 0)
                     if p_val == 1.0:
@@ -286,18 +384,28 @@ class RescueApp:
                     self.log_panel.add_log(f" > Duyệt: {coord_str:<8} | Chi phí (g): {g_cost}")
 
             self.step_index += 1
-            delay_time = 100
-            if not self.is_paused: self.after_id = self.root.after(delay_time, self.animate_step)
+            if not self.is_paused:
+                # ---> TỐC ĐỘ RIÊNG CHO TỪNG THUẬT TOÁN <---
+                delay_time = 100  #
+                if current_algo in ("Backtracking", "Forward Checking"):
+                    delay_time = 700
+                elif current_algo in ("Minimax", "Alpha-Beta"):
+                    delay_time = 300
+                elif current_algo == "Sensorless":
+                    delay_time = 600
+
+                self.after_id = self.root.after(delay_time, self.animate_step)
         else:
             self.draw_final_path()
             self.is_running = False
             self.btn_pause.config(state=tk.DISABLED)
             self.btn_step.config(state=tk.DISABLED)
+            self.phase_combobox.config(state="readonly")
             self.algo_combobox.config(state="readonly")
 
     def draw_final_path(self):
         current_algo = self.algo_var.get()
-        if current_algo == "Backtracking":
+        if current_algo in ("Backtracking", "Forward Checking"):
             self.var_status.set("Trạng thái: HOÀN THÀNH")
             self.var_path.set("Kế hoạch: Đã gán xong biến")
             return
@@ -314,14 +422,13 @@ class RescueApp:
             self.var_path.set("Kế hoạch: Đã lập sơ đồ dự phòng")
             self.log_panel.add_log(">> ĐÃ LẬP XONG KẾ HOẠCH DỰ PHÒNG CHO KHÓI MÙ!")
             edges = set()
-
             def extract_edges(plan, current_state):
-                if not plan: return
+                if not plan:
+                    return
                 sub_plans = plan[1]
                 for next_state, sub_plan in sub_plans.items():
                     edges.add((current_state, next_state))
                     extract_edges(sub_plan, next_state)
-
             extract_edges(self.path, self.robot.position)
             self.renderer.draw_and_or_edges(edges)
         else:

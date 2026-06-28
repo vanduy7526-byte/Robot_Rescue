@@ -1,6 +1,7 @@
 from models.node import get_moves
 from collections import deque
 from config import WALL
+import random
 
 def make_move(current_node, new_pos):
     return {
@@ -139,70 +140,99 @@ def and_or_graph_search(map_grid, start_pos, goal_pos):
     return final_plan, history
 
 def sensorless_search(map_grid, start_pos, goal_pos):
-    """
-    Tìm kiếm không cảm biến (belief state) sử dụng BFS.
-    Mỗi belief là một tập hợp các vị trí có thể của robot.
-    Hành động là một trong 4 hướng.
-    """
+    history = []
     goal = tuple(goal_pos)
-    start_belief = frozenset([tuple(start_pos)])
+
+    # ================= BƯỚC 1: RANDOM TRẠNG THÁI NIỀM TIN =================
+    valid_cells = []
+    for y in range(len(map_grid.grid)):
+        for x in range(len(map_grid.grid[0])):
+            if map_grid.grid[y][x] != WALL and (x, y) != goal:
+                valid_cells.append((x, y))
+
+    # CỐ ĐỊNH CHỈ LẤY 2 VỊ TRÍ NHƯ YÊU CẦU
+    num_beliefs = 2
+    possible_starts = random.sample(valid_cells, num_beliefs)
+
+    history.append({
+        'message': f"=== THUẬT TOÁN SENSORLESS ===\n"
+                   f"Cảnh báo: Robot bị hỏng cảm biến vị trí!\n"
+                   f"Hệ thống định vị dự đoán Robot đang ở {num_beliefs} vị trí có thể xảy ra: {possible_starts}\n"
+                   f"Mục tiêu: Tìm một chuỗi hành động chung để lùa tất cả các 'bản ngã' này về Đích.\n"
+                   f"--------------------------------------------------",
+        'belief': set(possible_starts),
+        'actions': [],
+        'action': None,
+        'parent_belief': None
+    })
+
+    # ================= BƯỚC 2: KHỞI TẠO TÌM KIẾM =================
+    start_belief = frozenset([tuple(pos) for pos in possible_starts])
     goal_belief = frozenset([goal])
 
-    # Hàng đợi BFS: (belief, path_actions, parent_belief, action)
     queue = deque()
     queue.append((start_belief, [], None, None))
     visited = {start_belief}
-    history = []
 
-    # Hàm chuyển trạng thái belief theo một hướng
     def transition(belief, direction):
         new_belief = set()
         dx, dy = direction
         for (x, y) in belief:
+            # NẾU ĐÃ TỚI ĐÍCH -> ĐỨNG IM CHỜ BÓNG MA KHÁC!
+            if (x, y) == goal:
+                new_belief.add((x, y))
+                continue
+
             nx, ny = x + dx, y + dy
-            # Kiểm tra hợp lệ
             if 0 <= nx < len(map_grid.grid[0]) and 0 <= ny < len(map_grid.grid):
-                if map_grid.grid[ny][nx] != WALL:  # WALL import từ config
+                if map_grid.grid[ny][nx] != WALL:
                     new_belief.add((nx, ny))
                 else:
-                    # Nếu không thể di chuyển, đứng yên
-                    new_belief.add((x, y))
+                    new_belief.add((x, y))  # Đụng tường thì trượt tại chỗ
             else:
                 new_belief.add((x, y))
         return frozenset(new_belief)
 
-    directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]  # Lên, Xuống, Trái, Phải
+    # Đã quy hoạch Tên Hành Động chuẩn xác để hiển thị ra UI
+    directions = [(0, -1, 'LÊN'), (0, 1, 'XUỐNG'), (-1, 0, 'TRÁI'), (1, 0, 'PHẢI')]
 
+    # ================= BƯỚC 3: DUYỆT BFS =================
     while queue:
-        belief, actions, parent_belief, action = queue.popleft()
-        history.append({
-            'belief': set(belief),
-            'actions': actions,
-            'action': action,
-            'parent_belief': parent_belief
-        })
+        belief, actions, parent_belief, action_name = queue.popleft()
 
-        # Kiểm tra nếu belief chỉ chứa goal (chắc chắn đến đích)
-        if belief == goal_belief or belief == frozenset([goal]):
-            # Xây dựng đường đi (các vị trí dự kiến)
-            path = [start_pos]
-            # Tái tạo path từ actions
-            current_pos = start_pos
-            for act in actions:
-                dx, dy = act
-                nx, ny = current_pos[0] + dx, current_pos[1] + dy
-                if 0 <= nx < len(map_grid.grid[0]) and 0 <= ny < len(map_grid.grid) and map_grid.grid[ny][nx] != WALL:
-                    current_pos = (nx, ny)
-                # Nếu không hợp lệ thì đứng yên (nhưng trong kế hoạch vẫn ghi vị trí cũ)
-                path.append(current_pos)
-            return path, history
+        if action_name is not None:
+            history.append({
+                'message': f"Thử hành động chung: {action_name} | Các bóng ma di chuyển tới: {list(belief)}",
+                'belief': set(belief),
+                'actions': actions,
+                'action': action_name,
+                'parent_belief': parent_belief
+            })
 
-        # Mở rộng các hành động
-        for dir_vec in directions:
-            new_belief = transition(belief, dir_vec)
+        # CHỐT ĐIỀU KIỆN THẮNG
+        if belief == goal_belief:
+            history.append({
+                'message': f"\nTHÀNH CÔNG! Đã tìm ra kế hoạch an toàn tuyệt đối.\n"
+                           f"=> KẾ HOẠCH: {' ➔ '.join(actions)}",
+                'belief': set(belief),
+                'actions': actions,
+                'action': action_name,
+                'parent_belief': parent_belief
+            })
+            return actions, history
+
+        for dx, dy, name in directions:
+            new_belief = transition(belief, (dx, dy))
             if new_belief not in visited:
                 visited.add(new_belief)
-                new_actions = actions + [dir_vec]
-                queue.append((new_belief, new_actions, belief, dir_vec))
+                new_actions = actions + [name]
+                queue.append((new_belief, new_actions, belief, name))
 
+    history.append({
+        'message': "\nTHẤT BẠI! Không thể tìm được chuỗi hành động chung để dồn các bản ngã về 1 điểm.",
+        'belief': set(),
+        'actions': [],
+        'action': None,
+        'parent_belief': None
+    })
     return [], history

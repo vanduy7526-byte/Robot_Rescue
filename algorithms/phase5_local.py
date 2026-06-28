@@ -80,7 +80,7 @@ def hill_climbing_search(map_grid, start_pos, goal_pos):
         current_cost = manhattan_distance(current['state'], goal)
 
         # Nếu neighbor tốt hơn (chi phí thấp hơn), di chuyển
-        if best_cost < current_cost:
+        if best_cost <= current_cost:
             next_node = {
                 'state': tuple(best_neighbor),
                 'parent': current,

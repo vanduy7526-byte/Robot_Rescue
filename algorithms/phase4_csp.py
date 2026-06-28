@@ -225,11 +225,19 @@ def forward_checking_search(map_grid, start_pos, goal_pos):
                 })
                 continue
 
+            # LỌC CÁC BIẾN CHƯA GÁN VÀ DỊCH 1/0 SANG CHỮ
+            formatted_domains = {}
+            for v in variables:
+                if v not in assignment and v != var:
+                    formatted_domains[v] = ["Cứu" if val == 1 else "Bỏ qua" for val in new_domains[v]]
+
             history.append({
-                'message': f"- Forward Checking => OK. Miền còn lại: { {v: new_domains[v] for v in new_domains if v != var} }",
+                'message': f"- Forward Checking => OK. Miền còn lại: {formatted_domains}",
                 'assignment': temp_assign, 'focus': var, 'status': 'valid',
                 'victim_statuses': victim_statuses
             })
+
+            assignment[var] = value
 
             assignment[var] = value
             history.append({
